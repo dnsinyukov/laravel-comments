@@ -13,25 +13,38 @@ use Illuminate\Support\Str;
 
 class CommentService
 {
-    public function create(array $data, array $attachments = []): Comment
+    public function create(array $data, array $attachments = []): int
     {
         return DB::transaction(function () use ($data, $attachments) {
-            $comment = Comment::create(array_merge($data, [
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]));
-            
-            if ($comment->parent_id) {
-                Comment::where('id', $comment->parent_id)->increment('replies_count');
+             $commentId = DB::table('comments')->insertGetId([
+                'commentable_type' => $data['type'],
+                'commentable_id' => $data['type_id'],
+                'user_id' => $data['user_id'],
+                'parent_id' => $data['parent_id'] ?? null,
+                'content' => $data['content'],
+                'rating' => 0,
+                'likes_count' => 0,
+                'dislikes_count' => 0,
+                'replies_count' => 0,
+                'abuse_reports_count' => 0,
+                'status' => 'published',
+                'ip_address' => $data['ip_address'] ?? null,
+                'user_agent' => $data['user_agent'] ?? null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            if (!empty($data['parent_id'])) {
+                DB::table('comments')->where('id', $data['parent_id'])->increment('replies_count');
             }
             
             if (!empty($attachments) && config('comments.attachments.enabled')) {
-                $this->saveAttachments($comment, $attachments);
+                $this->saveAttachments($commentId, $attachments);
             }
             
-            event(new \Coderden\Comments\Events\CommentCreated($comment));
+            event(new \Coderden\Comments\Events\CommentCreated($commentId));
             
-            return $comment->load(['user', 'attachments']);
+            return $commentId;
         });
     }
     
@@ -65,71 +78,47 @@ class CommentService
         });
     }
     
-    public function toggleLike(Comment $comment, $user, string $type = 'like'): array
+    public function toggleLike(int $commentId, $user): array
     {
-        return DB::transaction(function () use ($comment, $user, $type) {
-            $existing = CommentLike::where('comment_id', $comment->id)
+        $comment = DB::table('comments')->find($commentId, ['id']);
+
+        return DB::transaction(function () use ($comment, $user) {
+            $existing = DB::table('comment_likes')
+                ->where('comment_id', $comment->id)
                 ->where('user_id', $user->id)
                 ->first();
             
             $action = 'none';
             
             if ($existing) {
-                if ($existing->type === $type) {
-                    $existing->delete();
-                    $action = 'removed';
-                    
-                    if ($type === 'like') {
-                        $comment->decrement('likes_count');
-                        $comment->decrement('rating');
-                    } else {
-                        $comment->decrement('dislikes_count');
-                        $comment->increment('rating');
-                    }
-                } else {
-                    $oldType = $existing->type;
-                    $existing->update(['type' => $type]);
-                    $action = 'changed';
-                    
-                    if ($oldType === 'like' && $type === 'dislike') {
-                        $comment->decrement('likes_count');
-                        $comment->increment('dislikes_count');
-                        $comment->decrement('rating', 2);
-                    } else {
-                        $comment->increment('likes_count');
-                        $comment->decrement('dislikes_count');
-                        $comment->increment('rating', 2);
-                    }
-                }
+                DB::table('comment_likes')
+                    ->where('comment_id', $comment->id)
+                    ->where('user_id', $user->id)
+                    ->delete();
+
+                $action = 'removed';
+
+                DB::table('comments')->where('id', $comment->id)->decrement('likes_count');
             } else {
-                CommentLike::create([
-                    'comment_id' => $comment->id,
-                    'user_id' => $user->id,
-                    'type' => $type,
-                    'ip_address' => request()->ip(),
-                ]);
-                
                 $action = 'added';
-                
-                if ($type === 'like') {
-                    $comment->increment('likes_count');
-                    $comment->increment('rating');
-                } else {
-                    $comment->increment('dislikes_count');
-                    $comment->decrement('rating');
-                }
+                DB::table('comment_likes')
+                    ->insertGetId([
+                        'comment_id' => $comment->id,
+                        'user_id' => $user->id,
+                        'ip_address' => request()->ip(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+
+
+                DB::table('comments')->where('id', $comment->id)->increment('likes_count');
             }
             
-            $comment->refresh();
-            
-            event(new \Coderden\Comments\Events\CommentLiked($comment, $user, $type, $action));
+            event(new \Coderden\Comments\Events\CommentLiked($comment->id, $user->id,$action));
             
             return [
                 'action' => $action,
-                'likes_count' => $comment->likes_count,
-                'dislikes_count' => $comment->dislikes_count,
-                'rating' => $comment->rating,
-                'user_reaction' => $this->getUserReaction($comment, $user),
             ];
         });
     }
@@ -164,71 +153,71 @@ class CommentService
         return $report;
     }
     
-    public function getUserReaction(Comment $comment, $user): ?array
-    {
-        if (!$user) return null;
-        
-        $reaction = CommentLike::where('comment_id', $comment->id)
-            ->where('user_id', $user->id)
-            ->first();
-        
-        if (!$reaction) return null;
-        
-        return [
-            'type' => $reaction->type,
-            'reaction_type' => $reaction->reaction_type,
-            'created_at' => $reaction->created_at,
-        ];
-    }
     
-    public function getThread(string $commentableType, int $commentableId, array $options = [])
+    public function getThread(string $commentableType, int $commentableId, array $options = []): array
     {
         $perPage = $options['per_page'] ?? config('comments.pagination.default_per_page');
         $sortBy = $options['sort_by'] ?? config('comments.sorting.default');
         $sortOrder = $options['sort_order'] ?? 'desc';
         
-        $query = Comment::with([
-            'user:id,name,avatar,email',
-            'attachments',
-        ])
-        ->where('commentable_type', $commentableType)
-        ->where('commentable_id', $commentableId)
-        ->whereNull('parent_id')
-        ->published();
+        $query = DB::table('comments', 'c')
+            ->select(['c.user_id', 'c.content', 'c.rating', 'c.likes_count', 'c.replies_count', 'c.created_at', 'c.parent_id'])
+            ->selectRaw('u.name, u.avatar, u.email')
+            ->where('commentable_type', $commentableType)
+            ->where('commentable_id', $commentableId)
+            ->whereNull('parent_id')
+            ->where('status', 'published')
+            ->join('users as u', 'u.id', 'c.user_id');
         
         if (in_array($sortBy, config('comments.sorting.options'))) {
             $query->orderBy($sortBy, $sortOrder);
         }
         
         $query->orderBy('created_at', 'desc');
-        
-        return $query->paginate($perPage);
+        $resultPaginator = $query->paginate($perPage);
+
+        return [
+            'items' => $resultPaginator->items(),
+            'total' => $resultPaginator->total(),
+            'lastPage' => $resultPaginator->lastPage()
+        ];
     }
     
-    public function getReplies(Comment $comment, array $options = [])
+    public function getReplies(int $commentId, array $options = [])
     {
         $perPage = $options['per_page'] ?? 10;
-        
-        return Comment::with(['user:id,name,avatar'])
-            ->where('parent_id', $comment->id)
-            ->published()
-            ->orderBy('created_at')
-            ->paginate($perPage);
+
+        $query = DB::table('comments', 'c')
+            ->select(['c.user_id', 'c.content', 'c.rating', 'c.likes_count', 'c.replies_count', 'c.created_at', 'c.parent_id'])
+            ->selectRaw('u.name, u.avatar, u.email')
+            ->where('parent_id', $commentId)
+            ->where('status', 'published')
+            ->join('users as u', 'u.id', 'c.user_id')
+            ->orderBy('created_at');
+
+        $query->orderBy('created_at', 'desc');
+        $resultPaginator = $query->paginate($perPage);
+
+        return [
+            'items' => $resultPaginator->items(),
+            'total' => $resultPaginator->total(),
+            'lastPage' => $resultPaginator->lastPage()
+        ];
     }
     
-    public function saveAttachments(Comment $comment, array $attachments): void
+    public function saveAttachments(int $commentId, array $attachments): void
     {
         foreach ($attachments as $index => $file) {
             if ($file instanceof UploadedFile) {
                 $this->validateAttachment($file);
                 
                 $path = $file->store(
-                    config('comments.attachments.path', 'comments') . '/' . $comment->id,
+                    config('comments.attachments.path', 'comments') . '/' . $commentId,
                     config('comments.attachments.disk', 'public')
                 );
                 
                 CommentAttachment::create([
-                    'comment_id' => $comment->id,
+                    'comment_id' => $commentId,
                     'type' => $this->getFileType($file->getMimeType()),
                     'path' => $path,
                     'original_name' => $file->getClientOriginalName(),

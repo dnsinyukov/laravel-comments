@@ -23,7 +23,7 @@ return new class extends Migration
             
             $table->integer('rating')->default(0);
             
-            $table->unsignedInteger('likes_count')->default(0);
+            $table->integer('likes_count')->default(0);
             $table->unsignedInteger('dislikes_count')->default(0);
             $table->unsignedInteger('replies_count')->default(0);
             $table->unsignedInteger('abuse_reports_count')->default(0);

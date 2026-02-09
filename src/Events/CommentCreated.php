@@ -4,16 +4,15 @@ namespace Coderden\Comments\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Coderden\Comments\Models\Comment;
 
 class CommentCreated
 {
     use Dispatchable, SerializesModels;
 
-    public $comment;
+    public int $commentId;
 
-    public function __construct(Comment $comment)
+    public function __construct(int $commentId)
     {
-        $this->comment = $comment;
+        $this->commentId = $commentId;
     }
 }

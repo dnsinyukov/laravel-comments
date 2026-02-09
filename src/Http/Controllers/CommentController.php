@@ -6,7 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Coderden\Comments\Models\Comment;
 use Coderden\Comments\Services\CommentService;
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 class CommentController extends Controller
 {
@@ -19,47 +20,44 @@ class CommentController extends Controller
         $this->middleware('auth:sanctum')->except(['index', 'replies']);
     }
     
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'commentable_type' => ['required', 'string'],
-            'commentable_id' => 'required|integer',
+            'type' => ['required', 'string'],
+            'type_id' => 'required|integer',
             'per_page' => 'integer|min:1|max:100',
             'sort_by' => 'in:rating,created_at,likes_count',
             'sort_order' => 'in:asc,desc',
         ]);
         
         $comments = $this->service->getThread(
-            $validated['commentable_type'],
-            $validated['commentable_id'],
+            $validated['type'],
+            $validated['type_id'],
             $validated
         );
         
-        return response()->json([
-            'success' => true,
-            'data' => $comments,
-        ]);
+        return response()->json($comments);
     }
     
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'commentable_type' => ['required', 'string'],
-            'commentable_id' => 'required|integer',
+            'type' => ['required', 'string'],
+            'type_id' => 'required|integer',
             'content' => 'required|string|min:1|max:5000',
-            'parent_id' => 'nullable|integer|exists:comments,id',
+            'parent_id' => 'nullable|integer',
         ]);
         
-        $comment = $this->service->create(
-            array_merge($validated, ['user_id' => $request->user()->id]),
+        $commentId = $this->service->create(
+            array_merge($validated, [
+                'user_id' => $request->user()->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]),
             $request->file('attachments', [])
         );
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Comment created successfully',
-            'data' => $comment,
-        ], 201);
+        return response()->json(['id' => $commentId], 201);
     }
     
     public function update(Request $request, Comment $comment)
@@ -99,22 +97,14 @@ class CommentController extends Controller
         ]);
     }
     
-    public function like(Request $request, Comment $comment)
+    public function like(Request $request, int $commentId)
     {
-        $validated = $request->validate([
-            'type' => 'required|in:like,dislike',
-        ]);
-        
         $result = $this->service->toggleLike(
-            $comment,
+            $commentId,
             $request->user(),
-            $validated['type']
         );
         
-        return response()->json([
-            'success' => true,
-            'data' => $result,
-        ]);
+        return response()->json($result);
     }
     
     public function report(Request $request, Comment $comment)
@@ -148,17 +138,14 @@ class CommentController extends Controller
         }
     }
     
-    public function replies(Request $request, Comment $comment)
+    public function replies(Request $request, int $commentId)
     {
         $validated = $request->validate([
             'per_page' => 'integer|min:1|max:100',
         ]);
         
-        $replies = $this->service->getReplies($comment, $validated);
+        $result = $this->service->getReplies($commentId, $validated);
         
-        return response()->json([
-            'success' => true,
-            'data' => $replies,
-        ]);
+        return response()->json($result);
     }
 }

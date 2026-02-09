@@ -3,23 +3,20 @@
 namespace Coderden\Comments\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-use Coderden\Comments\Models\Comment;
 
 class CommentLiked
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
 
-    public $comment;
+    public $commentId;
     public $userId;
     public $type;
     public $action;
 
-    public function __construct(Comment $comment, $userId, string $type, string $action)
+    public function __construct(int $commentId, int $userId, string $action)
     {
-        $this->comment = $comment;
+        $this->commentId = $commentId;
         $this->userId = $userId;
-        $this->type = $type;
         $this->action = $action;
     }
 }
