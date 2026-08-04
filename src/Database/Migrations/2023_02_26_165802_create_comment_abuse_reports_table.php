@@ -11,16 +11,26 @@ return new class extends Migration
         Schema::create('comment_abuse_reports', function (Blueprint $table) {
             $table->id();
             
+            // Связь с комментарием
             $table->foreignId('comment_id')
                   ->constrained()
                   ->onDelete('cascade');
             
+            // Пользователь, который пожаловался
             $table->foreignId('user_id')
                   ->constrained()
                   ->onDelete('cascade');
             
             // Причина жалобы
-            $table->string('reason');
+            $table->enum('reason', [
+                'spam',             // Спам
+                'abuse',            // Оскорбления
+                'hate_speech',      // Разжигание ненависти
+                'adult_content',    // Контент 18+
+                'spoiler',          // Спойлеры
+                'false_info',       // Ложная информация
+                'other',            // Другое
+            ]);
             
             // Дополнительное описание (если выбрано "другое" или нужно уточнить)
             $table->text('description')->nullable();
@@ -51,6 +61,7 @@ return new class extends Migration
             // Уникальность: один пользователь - одна жалоба на комментарий
             $table->unique(['comment_id', 'user_id']);
             
+            // Индексы
             $table->index(['comment_id', 'status']);
             $table->index(['user_id', 'created_at']);
             $table->index(['status', 'created_at']);

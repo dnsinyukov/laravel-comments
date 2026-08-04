@@ -8,7 +8,7 @@ return [
     */
     
     'models' => [
-        'user' => \App\Models\User::class,
+        'user' => '\App\Models\User',
         'comment' => \Coderden\Comments\Models\Comment::class,
         'comment_like' => \Coderden\Comments\Models\CommentLike::class,
         'abuse_report' => \Coderden\Comments\Models\CommentAbuseReport::class,

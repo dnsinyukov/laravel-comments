@@ -83,13 +83,13 @@ class LightCommentService
         }, $comments);
         
         // Создаем пагинатор вручную
-        $paginator = new LengthAwarePaginator(
-            $formattedComments,
-            $total,
-            $perPage,
-            $page,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
+        // $paginator = new LengthAwarePaginator(
+        //     $formattedComments,
+        //     $total,
+        //     $perPage,
+        //     $page,
+        //     ['path' => request()->url(), 'query' => request()->query()]
+        // );
         
         return [
             'data' => $formattedComments,

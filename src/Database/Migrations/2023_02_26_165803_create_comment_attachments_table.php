@@ -42,6 +42,7 @@ return new class extends Migration
             
             $table->timestamps();
             
+            // Индексы
             $table->index(['comment_id', 'order']);
             $table->index('type');
         });

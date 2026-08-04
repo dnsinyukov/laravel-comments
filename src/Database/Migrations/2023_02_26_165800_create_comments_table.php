@@ -11,23 +11,30 @@ return new class extends Migration
         Schema::create('comments', function (Blueprint $table) {
             $table->id();
             
+            // Полиморфная связь: комментарий может быть к манге, главе, странице и т.д.
             $table->morphs('commentable');
             
+            // Автор комментария
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             
+            // Для ответов на другие комментарии
             $table->foreignId('parent_id')->nullable()
                   ->constrained('comments')
                   ->onDelete('cascade');
             
+            // Текст комментария
             $table->text('content');
             
+            // Рейтинг (сумма лайков/дизлайков)
             $table->integer('rating')->default(0);
             
-            $table->unsignedInteger('likes_count')->default(0);
+            // Счетчики для быстрого доступа
+            $table->integer('likes_count')->default(0);
             $table->unsignedInteger('dislikes_count')->default(0);
             $table->unsignedInteger('replies_count')->default(0);
             $table->unsignedInteger('abuse_reports_count')->default(0);
             
+            // Статус комментария
             $table->enum('status', [
                 'published',    // Опубликован
                 'hidden',       // Скрыт (например, из-за жалоб)

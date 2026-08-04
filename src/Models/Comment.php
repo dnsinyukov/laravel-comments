@@ -64,7 +64,7 @@ class Comment extends Model
     
     public function user(): BelongsTo
     {
-        $userModel = config('comments.models.user', \App\Models\User::class);
+        $userModel = config('comments.models.user', '\App\Models\User');
         return $this->belongsTo($userModel);
     }
     

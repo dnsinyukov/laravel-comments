@@ -11,17 +11,20 @@ return new class extends Migration
         Schema::create('comment_likes', function (Blueprint $table) {
             $table->id();
             
+            // Связь с комментарием
             $table->foreignId('comment_id')
                   ->constrained()
                   ->onDelete('cascade');
             
+            // Пользователь
             $table->foreignId('user_id')
                   ->constrained()
                   ->onDelete('cascade');
             
+            // Тип реакции: like, dislike
             $table->enum('type', ['like', 'dislike']);
             
-            // Можно добавить разные типы реакций 
+            // Можно добавить разные типы реакций в будущем
             $table->string('reaction_type')->nullable()
                   ->comment('Для расширения: heart, laugh, angry и т.д.');
             
@@ -33,6 +36,7 @@ return new class extends Migration
             // Уникальность: один пользователь - одна реакция на комментарий
             $table->unique(['comment_id', 'user_id']);
             
+            // Индексы
             $table->index(['comment_id', 'type']);
             $table->index(['user_id', 'created_at']);
             $table->index('created_at');

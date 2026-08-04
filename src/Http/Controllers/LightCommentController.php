@@ -36,7 +36,6 @@ class LightCommentController
         );
         
         return response()->json([
-            'success' => true,
             'data' => $result['data'],
             'pagination' => $result['pagination'],
         ]);
