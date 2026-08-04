@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Coderden\Comments\Http\Controllers\LightCommentController;
 
-Route::prefix('api/comments/light')->name('comments.light.')->group(function () {
+Route::name('comments.light.')->group(function () {
     // Публичные маршруты
     Route::get('/', [LightCommentController::class, 'index'])->name('index');
     Route::get('/{commentId}/thread', [LightCommentController::class, 'thread'])->name('thread');

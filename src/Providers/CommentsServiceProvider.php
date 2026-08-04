@@ -47,13 +47,13 @@ class CommentsServiceProvider extends ServiceProvider
             $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
         });
 
-        //  Route::group([
-        //     'prefix' => 'api/comments/light',
-        //     'namespace' => 'Coderden\Comments\Http\Controllers',
-        //     'middleware' => ['api'],
-        // ], function () {
-        //     $this->loadRoutesFrom(__DIR__.'/../routes/light-api.php');
-        // });
+         Route::group([
+            'prefix' => 'api/comments/light',
+            'namespace' => 'Coderden\Comments\Http\Controllers',
+            'middleware' => ['api'],
+        ], function () {
+            $this->loadRoutesFrom(__DIR__.'/../routes/light-api.php');
+        });
     }
 
     protected function registerPublishing()
