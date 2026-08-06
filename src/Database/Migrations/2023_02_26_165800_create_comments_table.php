@@ -15,7 +15,7 @@ return new class extends Migration
             $table->morphs('commentable');
             
             // Автор комментария
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('user_id');
             
             // Для ответов на другие комментарии
             $table->foreignId('parent_id')->nullable()

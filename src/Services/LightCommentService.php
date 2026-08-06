@@ -23,11 +23,11 @@ class LightCommentService
         
         // Определяем сортировку
         $orderBy = match($sort) {
-            'newest' => 'comments.created_at DESC',
-            'oldest' => 'comments.created_at ASC',
-            'rating_desc' => 'comments.rating DESC, comments.created_at DESC',
-            'rating_asc' => 'comments.rating ASC, comments.created_at ASC',
-            default => 'comments.rating DESC, comments.created_at DESC',
+            'newest' => 'c.created_at DESC',
+            'oldest' => 'c.created_at ASC',
+            'rating_desc' => 'c.rating DESC, c.created_at DESC',
+            'rating_asc' => 'c.rating ASC, c.created_at ASC',
+            default => 'c.rating DESC, c.created_at DESC',
         };
         
         // Получаем корневые комментарии
@@ -50,7 +50,7 @@ class LightCommentService
                     WHERE rc.parent_id = c.id
                     AND rc.status = 'published'
                 ) as total_replies
-            FROM comments c
+            FROM comments  as c
             JOIN users u ON c.user_id = u.id
             WHERE c.commentable_type = ?
             AND c.commentable_id = ?
@@ -59,7 +59,7 @@ class LightCommentService
             ORDER BY $orderBy
             LIMIT ? OFFSET ?
         ", [$commentableType, $commentableId, $perPage, $offset]);
-        
+
         // Получаем общее количество для пагинации
         $total = DB::selectOne("
             SELECT COUNT(*) as total
@@ -69,7 +69,7 @@ class LightCommentService
             AND parent_id IS NULL
             AND status = 'published'
         ", [$commentableType, $commentableId])->total;
-        
+   
         // Форматируем результат
         $formattedComments = array_map(function($comment) {
             $comment->created_at = Carbon::parse($comment->created_at);
@@ -81,7 +81,7 @@ class LightCommentService
             unset($comment->user_id, $comment->user_name, $comment->user_avatar);
             return $comment;
         }, $comments);
-        
+     
         // Создаем пагинатор вручную
         // $paginator = new LengthAwarePaginator(
         //     $formattedComments,
