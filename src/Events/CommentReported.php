@@ -3,20 +3,17 @@
 namespace Coderden\Comments\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-use Coderden\Comments\Models\Comment;
-use Coderden\Comments\Models\CommentAbuseReport;
 
 class CommentReported
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
 
-    public $comment;
-    public $report;
+    public int $commentId;
+    public int $reportId;
 
-    public function __construct(Comment $comment, CommentAbuseReport $report)
+    public function __construct(int $commentId, int $reportId)
     {
-        $this->comment = $comment;
-        $this->report = $report;
+        $this->commentId = $commentId;
+        $this->reportId = $reportId;
     }
 }

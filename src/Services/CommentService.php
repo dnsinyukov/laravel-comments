@@ -148,7 +148,7 @@ class CommentService
             $comment->update(['status' => 'hidden']);
         }
         
-        event(new \Coderden\Comments\Events\CommentReported($comment, $report));
+        event(new \Coderden\Comments\Events\CommentReported($comment->id, $report->id));
         
         return $report;
     }

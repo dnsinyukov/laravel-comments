@@ -3,11 +3,10 @@
 namespace Coderden\Comments\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 class CommentCreated
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
 
     public int $commentId;
 

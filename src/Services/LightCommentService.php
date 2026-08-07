@@ -336,6 +336,9 @@ class LightCommentService
             ", [$commentId]);
             
             DB::commit();
+
+            event(new \Coderden\Comments\Events\CommentCreated($commentId));
+
             
             // Форматируем результат
             $comment->created_at = Carbon::parse($comment->created_at);
@@ -493,6 +496,8 @@ class LightCommentService
             }
             
             DB::commit();
+
+            event(new \Coderden\Comments\Events\CommentReported($commentId, $reportId));
             
             // Получаем созданную жалобу
             $report = DB::selectOne("
